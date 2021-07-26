@@ -42,7 +42,7 @@ namespace LoL_AvaliableChests
         }
         void InitInputs()
         {
-            bool initiated = false;
+            bool regionSelected = false;
 
             if (File.Exists(pathToConfigFile))
             {
@@ -51,14 +51,17 @@ namespace LoL_AvaliableChests
                 if (content.Length == 3)
                 {
                     playerNameInput.Text = content[0];
-                    regionInput.SelectedIndex = Array.IndexOf(regions, content[1]);
+                    int regionIndex = Array.IndexOf(regions, content[1]);
+                    if (regionIndex != -1)
+                    {
+                        regionInput.SelectedIndex = regionIndex;
+                        regionSelected = true;
+                    }
                     apiKeyInput.Password = content[2];
-
-                    initiated = true;
                 }
             }
 
-            if (!initiated)
+            if (!regionSelected)
             {
                 regionInput.SelectedIndex = 0;
             }
