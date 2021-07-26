@@ -22,8 +22,6 @@ namespace LoL_AvaliableChests
         public string[] regions;
         string pathToConfigFile = "config.txt";
 
-        Thread liveApiThread;
-
         public MainWindow()
         {
             InitializeComponent();
@@ -44,6 +42,8 @@ namespace LoL_AvaliableChests
         }
         void InitInputs()
         {
+            bool initiated = false;
+
             if (File.Exists(pathToConfigFile))
             {
                 string[] content = File.ReadAllLines(pathToConfigFile);
@@ -51,9 +51,16 @@ namespace LoL_AvaliableChests
                 if (content.Length == 3)
                 {
                     playerNameInput.Text = content[0];
-                    regionInput.SelectedValue = regionInput.Items.GetItemAt(Array.IndexOf(regions, content[1]));
+                    regionInput.SelectedIndex = Array.IndexOf(regions, content[1]);
                     apiKeyInput.Password = content[2];
+
+                    initiated = true;
                 }
+            }
+
+            if (!initiated)
+            {
+                regionInput.SelectedIndex = 0;
             }
         }
         public void GenerateComboBoxContent()
