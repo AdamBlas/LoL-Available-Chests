@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -21,23 +22,27 @@ namespace LoL_AvaliableChests
         public ControlTemplate selectedRegionTemplate;
         public string[] regions;
         string pathToConfigFile = "config.txt";
+        string region;
 
         public MainWindow()
         {
             InitializeComponent();
             GenerateComboBoxContent();
+
+            InitInputs();
+
             try
             {
                 DownloadChampionData();
+                Thread imgThread = new Thread(DownloadTilesImages);
+                imgThread.Start();
             }
             catch (Exception)
             {
                 return;
             }
 
-            InitInputs();
-
-            errorMessage.Foreground = Brushes.White;
+            errorMessage.Foreground = System.Windows.Media.Brushes.White;
             errorMessage.Text = string.Empty;
         }
         void InitInputs()
@@ -66,7 +71,7 @@ namespace LoL_AvaliableChests
                 regionInput.SelectedIndex = 0;
             }
         }
-        public void GenerateComboBoxContent()
+        void GenerateComboBoxContent()
         {
             regionTemplate = (ControlTemplate)this.Resources["regionTemplate"];
             selectedRegionTemplate = (ControlTemplate)this.Resources["selectedRegionTemplate"];
@@ -93,7 +98,7 @@ namespace LoL_AvaliableChests
                 regionInput.Items.Add(item);
             }
         }
-        public void DownloadChampionData()
+        void DownloadChampionData()
         {
             try
             {
@@ -102,7 +107,7 @@ namespace LoL_AvaliableChests
             }
             catch (Exception)
             {
-                errorMessage.Foreground = Brushes.Red;
+                errorMessage.Foreground = System.Windows.Media.Brushes.Red;
                 errorMessage.Text = "Failed to download champion data.";
                 playerNameInput.IsEnabled = false;
                 regionInput.IsEnabled = false;
@@ -115,28 +120,28 @@ namespace LoL_AvaliableChests
             champsList.RemoveAt(0);
             champsList = champsList.OrderBy(o => o.name).ToList();
         }
-        public void GetApiKey(object sender, RoutedEventArgs e)
+        void GetApiKey(object sender, RoutedEventArgs e)
         {
             if (errorOccurred)
                 return;
 
             System.Diagnostics.Process.Start("https://developer.riotgames.com");
         }
-        public void GenerateList(object sender, RoutedEventArgs e)
+        void GenerateList(object sender, RoutedEventArgs e)
         {
             if (errorOccurred)
                 return;
 
             if (string.IsNullOrEmpty(playerNameInput.Text))
             {
-                errorMessage.Foreground = Brushes.Red;
+                errorMessage.Foreground = System.Windows.Media.Brushes.Red;
                 errorMessage.Text = "Player name not given.";
                 return;
             }
 
             if (string.IsNullOrEmpty(apiKeyInput.Password))
             {
-                errorMessage.Foreground = Brushes.Red;
+                errorMessage.Foreground = System.Windows.Media.Brushes.Red;
                 errorMessage.Text = "Api key not given. You can get one on \nhttps://developer.riotgames.com";
                 return;
             }
@@ -158,7 +163,7 @@ namespace LoL_AvaliableChests
                 return;
             }
 
-            errorMessage.Foreground = Brushes.DarkGreen;
+            errorMessage.Foreground = System.Windows.Media.Brushes.DarkGreen;
             errorMessage.Text = "Done.";
 
             string filePath = "chests.txt";
@@ -190,7 +195,7 @@ namespace LoL_AvaliableChests
             writer.Close();
             System.Diagnostics.Process.Start(filePath);
         }
-        public HttpResponseMessage GET(string URL)
+        HttpResponseMessage GET(string URL)
         {
             using (HttpClient client = new HttpClient())
             {
@@ -199,12 +204,11 @@ namespace LoL_AvaliableChests
                 return result.Result;
             }
         }
-        public string GetURI(string path)
+        string GetURI(string path)
         {
             string apiKey = apiKeyInput.Password;
-            string selectedRegion = ((ComboBoxItem)regionInput.SelectedItem).Content.ToString();
             string regionCode;
-            switch (selectedRegion)
+            switch (region)
             {
                 case "Brazil":
                     regionCode = "br1";
@@ -240,11 +244,11 @@ namespace LoL_AvaliableChests
                     regionCode = "ru";
                     break;
                 default:
-                    throw new NotImplementedException("Region " + selectedRegion + " not recognised");
+                    throw new NotImplementedException("Region " + region + " not recognised");
             }
             return "https://" + regionCode + ".api.riotgames.com/" + path + "?api_key=" + apiKey;
         }
-        public T GetDTOFromApi<T>(string path)
+        T GetDTOFromApi<T>(string path)
         {
             string uri;
             try
@@ -253,33 +257,33 @@ namespace LoL_AvaliableChests
             }
             catch (NotImplementedException e)
             {
-                errorMessage.Foreground = Brushes.Red;
+                errorMessage.Foreground = System.Windows.Media.Brushes.Red;
                 errorMessage.Text = e.Message;
                 throw;
             }
 
             return GetDTOFromJson<T>(uri);
         }
-        public T GetDTOFromJson<T>(string path)
+        T GetDTOFromJson<T>(string path)
         {
             string content = GetJson(path);
             return JsonConvert.DeserializeObject<T>(content);
         }
-        public string GetJson(string uri)
+        string GetJson(string uri)
         {
             var response = GET(uri);
             string content = response.Content.ReadAsStringAsync().Result;
 
             if (response.StatusCode != System.Net.HttpStatusCode.OK)
             {
-                errorMessage.Foreground = Brushes.Red;
+                errorMessage.Foreground = System.Windows.Media.Brushes.Red;
                 errorMessage.Text = "Error occured while connecting to Riot API.";
                 throw new HttpRequestException();
             }
 
             return content;
         }
-        private void OnRegionChange(object sender, SelectionChangedEventArgs e)
+        void OnRegionChange(object sender, SelectionChangedEventArgs e)
         {
             for (int i = 0; i < regionInput.Items.Count; i++)
             {
@@ -289,7 +293,212 @@ namespace LoL_AvaliableChests
                 ((TextBlock)item.Template.FindName("textField", item)).Text = item.Content.ToString();
             }
 
-            dropdownLabel.Text = ((ComboBoxItem)regionInput.SelectedItem).Content.ToString();
+            region = ((ComboBoxItem)regionInput.SelectedItem).Content.ToString();
+            dropdownLabel.Text = region;
+        }
+
+        void DownloadTilesImages()
+        {
+            this.Dispatcher.BeginInvoke(DispatcherPriority.Normal, (ThreadStart)delegate () {
+                errorMessage.Foreground = System.Windows.Media.Brushes.Green;
+            });
+
+            if (!Directory.Exists("ChampImages"))
+                Directory.CreateDirectory("ChampImages");
+
+            bool updated = false;
+
+            foreach (ChampionDTO champ in champsList)
+            {
+                string directory = "ChampImages\\";
+                string fileName = directory + champ.id + ".jpg";
+                string fileNameAvaliable = directory + champ.id + "_aval.jpg";
+                string fileNameObtained = directory + champ.id + "_obt.jpg";
+
+                if (!File.Exists(fileName))
+                {
+                    updated = true;
+
+                    this.Dispatcher.BeginInvoke(DispatcherPriority.Normal, (ThreadStart)delegate () {
+                        errorMessage.Text = "Downloading " + champ.name + " image...";
+                    });
+
+                    string url = "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-tiles/" + champ.id + "/" + champ.id + "000.jpg";
+                    using (WebClient client = new WebClient())
+                    {
+                        client.DownloadFile(new Uri(url), fileName);
+                    }
+                }
+
+                if (!File.Exists(fileNameAvaliable))
+                {
+                    updated = true;
+
+                    this.Dispatcher.BeginInvoke(DispatcherPriority.Normal, (ThreadStart)delegate () {
+                        errorMessage.Text = "Generating " + champ.name + " image...";
+                    });
+
+                    Bitmap img = new Bitmap(fileName);
+
+                    for (int i = 0; i < img.Width; i++)
+                    {
+                        for (int j = 0; j < img.Height; j++)
+                        {
+                            System.Drawing.Color c = img.GetPixel(i, j);
+                            int avg = (c.R + c.G + c.B) / 3;
+                            System.Drawing.Color gray = System.Drawing.Color.FromArgb((int)(avg * 0.7), (int)(avg * 1.0), (int)(avg * 0.7));
+                            img.SetPixel(i, j, gray);
+                        }
+                    }
+
+                    using (Graphics g = Graphics.FromImage(img))
+                        g.DrawRectangle(new System.Drawing.Pen(System.Drawing.Brushes.Green, 40), new Rectangle(0, 0, img.Width, img.Height));
+
+                    img.Save(fileNameAvaliable);
+                }
+
+                if (!File.Exists(fileNameObtained))
+                {
+                    updated = true;
+
+                    this.Dispatcher.BeginInvoke(DispatcherPriority.Normal, (ThreadStart)delegate () {
+                        errorMessage.Text = "Generating " + champ.name + " image...";
+                    });
+
+                    Bitmap img = new Bitmap(fileName);
+                    for (int i = 0; i < img.Width; i++)
+                    {
+                        for (int j = 0; j < img.Height; j++)
+                        {
+                            System.Drawing.Color c = img.GetPixel(i, j);
+                            int avg = (c.R + c.G + c.B) / 3;
+                            System.Drawing.Color gray = System.Drawing.Color.FromArgb((int)(avg * 1.0), (int)(avg * 0.5), (int)(avg * 0.5));
+                            img.SetPixel(i, j, gray);
+                        }
+                    }
+
+                    using (Graphics g = Graphics.FromImage(img))
+                        g.DrawRectangle(new System.Drawing.Pen(System.Drawing.Brushes.Red, 40), new Rectangle(0, 0, img.Width, img.Height));
+
+                    img.Save(fileNameObtained);
+                }
+            }
+
+            if (updated)
+            {
+                this.Dispatcher.BeginInvoke(DispatcherPriority.Normal, (ThreadStart)delegate () {
+                    errorMessage.Text = "Succesfully updated database.";
+                });
+            }
+        }
+        void GenerateInfographic(object sender, RoutedEventArgs e)
+        {
+            if (errorOccurred)
+                return;
+
+            if (string.IsNullOrEmpty(playerNameInput.Text))
+            {
+                errorMessage.Foreground = System.Windows.Media.Brushes.Red;
+                errorMessage.Text = "Player name not given.";
+                return;
+            }
+
+            if (string.IsNullOrEmpty(apiKeyInput.Password))
+            {
+                errorMessage.Foreground = System.Windows.Media.Brushes.Red;
+                errorMessage.Text = "Api key not given. You can get one on \nhttps://developer.riotgames.com";
+                return;
+            }
+
+            string playerName = playerNameInput.Text;
+            string summonerDataPath = "/lol/summoner/v4/summoners/by-name/" + playerName;
+
+            SummonerDTO summonerInfo = null;
+            List<ChampionMasteryDTO> championMasteryDTOs = null;
+
+            try
+            {
+                summonerInfo = GetDTOFromApi<SummonerDTO>(summonerDataPath);
+                string champDetailsPath = "/lol/champion-mastery/v4/champion-masteries/by-summoner/" + summonerInfo.id;
+                championMasteryDTOs = GetDTOFromApi<List<ChampionMasteryDTO>>(champDetailsPath);
+            }
+            catch (Exception)
+            {
+                errorMessage.Foreground = System.Windows.Media.Brushes.Red;
+                errorMessage.Text = "Unknown error occured while fetching chest data.";
+            }
+
+            errorMessage.Foreground = System.Windows.Media.Brushes.Green;
+            errorMessage.Text = "Generating...";
+
+            int cols = 15;
+            int rows = (int)Math.Ceiling((float)champsList.Count / cols);
+            int initGap = 150;
+            int gap = 15;
+            int imgWidth = 100;
+            int imgHeight = 100;
+
+            int width = gap + cols * (imgWidth + gap);
+            int height = initGap + gap + rows * (imgHeight + gap);
+            Bitmap result = new Bitmap(width, height);
+            Graphics gfx = Graphics.FromImage(result);
+
+            gfx.DrawImage(new Bitmap("ChampImages\\backgroundBig.png"), new System.Drawing.Point[] {
+                new System.Drawing.Point(0, 0),
+                new System.Drawing.Point(width, 0),
+                new System.Drawing.Point(0, height)
+            });
+
+            RectangleF rect = new RectangleF(0, 0, width, (int)(initGap));
+            StringFormat format = new StringFormat()
+            {
+                Alignment = StringAlignment.Center,
+                LineAlignment = StringAlignment.Center
+            };
+            gfx.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            gfx.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            gfx.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+            gfx.DrawString("LoL Avaliable Chests", new Font("Friz Quadrata", 40), System.Drawing.Brushes.DarkGoldenrod, rect, format);
+
+            rect = new RectangleF(gap, (int)(initGap * 0.6), width, (int)(initGap * 0.4));
+            format.Alignment = StringAlignment.Near;
+            gfx.DrawString("Generated for player: " + playerName + "\nGeneration date: " + DateTime.Now.ToString(), new Font("Friz Quadrata", 20), System.Drawing.Brushes.DarkGoldenrod, rect, format);
+
+            int currCol = 0;
+            int currRow = 0;
+            foreach (var champ in champsList)
+            {
+                bool chestGranted = false;
+
+                foreach (var champData in from champData in championMasteryDTOs
+                                          where champData.championId == champ.id
+                                          select champData)
+                {
+                    chestGranted = champData.chestGranted;
+                    break;
+                }
+
+                string filename = "ChampImages\\" + champ.id + "_";
+                Bitmap champTile = chestGranted ? new Bitmap(filename + "obt.jpg") : new Bitmap(filename + "aval.jpg");
+                gfx.DrawImage(champTile, new System.Drawing.Point[] {
+                    new System.Drawing.Point(gap + currCol * (imgWidth + gap), initGap + gap + currRow * (imgHeight + gap)),
+                    new System.Drawing.Point((currCol + 1) * (imgWidth + gap), initGap + gap + currRow * (imgHeight + gap)),
+                    new System.Drawing.Point(gap + currCol * (imgWidth + gap), initGap + (currRow + 1) * (imgHeight + gap))
+                    }); ;
+
+                currCol++;
+                if (currCol >= cols)
+                {
+                    currCol = 0;
+                    currRow++;
+                }
+            }
+
+            errorMessage.Foreground = System.Windows.Media.Brushes.Green;
+            errorMessage.Text = "Done.";
+
+            result.Save("chests.png");
+            System.Diagnostics.Process.Start("chests.png");
         }
     }
 }

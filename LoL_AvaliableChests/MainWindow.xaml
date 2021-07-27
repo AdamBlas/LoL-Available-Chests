@@ -48,7 +48,7 @@
         <PasswordBox Name="apiKeyInput" HorizontalAlignment="Left" Background="Transparent" Foreground="White" CaretBrush="White" BorderThickness="0" Margin="12,93,0,0" VerticalAlignment="Top" Width="326" Height="17" RenderTransformOrigin="0.5,0.5"/>
 
         <!-- GENERATE LIST BUTTON -->
-        <Image HorizontalAlignment="Left" Height="41" Source="Images/button.jpg" Margin="10,119,0,0" VerticalAlignment="Top" Width="141" MouseLeftButtonDown="GenerateList"/>
+        <Image HorizontalAlignment="Left" Height="41" Source="Images/button.jpg" Margin="10,119,0,0" VerticalAlignment="Top" Width="141" MouseLeftButtonDown="GenerateInfographic"/>
         <TextBlock Name="generateButtonLabel" Foreground="#c4993b" FontFamily="Friz Quadrata" FontSize="18" Text="Generate list" IsHitTestVisible="False" HorizontalAlignment="Left" TextAlignment="Center" Margin="9,129,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="141" Height="20"/>
 
         <!-- GET API KEY BUTTON -->
